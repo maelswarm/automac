@@ -15,6 +15,11 @@
 #include <unistd.h>
 #include <stdarg.h>
 
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 pid_t  pid;
 int status;
 int minimum;
@@ -32,6 +37,41 @@ void safe_printf(const char *format, ...)
     write(1, buf, strlen(buf)); /* write is async-signal-safe */
 }
 
+int isValidNDevice(char *name) {
+    
+    char buf[1024];
+    struct ifconf ifc;
+    struct ifreq *ifr;
+    int sck;
+    int nIntfcs;
+    
+    /* Get a socket handle. */
+    sck = socket(AF_INET, SOCK_DGRAM, 0);
+    if(sck < 0)
+    {
+        perror("socket");
+        return 1;
+    }
+    
+    ifc.ifc_len = sizeof(buf);
+    ifc.ifc_buf = buf;
+    if(ioctl(sck, SIOCGIFCONF, &ifc) < 0)
+    {
+        perror("ioctl(SIOCGIFCONF)");
+        return 1;
+    }
+    
+    ifr = ifc.ifc_req;
+    nIntfcs = ifc.ifc_len / sizeof(struct ifreq);
+    for(int i=0; i < nIntfcs; i++)
+    {
+        if (!strcmp((&ifr[i])->ifr_name, name)) {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
 
 int main(int argc, char **argv) {
     maximum = 3600;
@@ -49,6 +89,10 @@ int main(int argc, char **argv) {
         printf("./autoMACtic <device>\n");
         printf("\n\nYou can also choose refresh bounds.");
         printf("\n./autoMACtic <device> <minumum timeout in minutes> <maximum timeout in minutes>\n\n");
+        exit(0);
+    }
+    if (!isValidNDevice(argv[1])) {
+        printf("\nPlease choose a valid network device.\nFor example: en0 or p2p0\n");
         exit(0);
     }
     if (argv[2] != NULL) {
