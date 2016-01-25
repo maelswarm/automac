@@ -5,7 +5,7 @@ For unix only.
 
 Example execute:
 ````
-sudo ./autoMACtic <device> <minumum> <maximum>
+sudo ./automac <device> <minumum> <maximum>
 ````
 
 Minimum and maximum are optional. Their input is in minutes.
