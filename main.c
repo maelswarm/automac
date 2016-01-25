@@ -63,6 +63,7 @@ int main(int argc, char **argv) {
     }
     if (maximum<60 || minimum<60) {
         printf("\ntimeout must be equal or greater than 1 minute\n");
+        exit(0);
     }
     
     printf("\nDevice: %s", argv[1]);
@@ -95,7 +96,7 @@ int main(int argc, char **argv) {
                     int ifconfig_up = execvp(execArgs[0], execArgs);
                 } else {
                     waitpid(-1, &status, 0);
-                    printf("\nCompleted\n");
+                    printf("Completed\n");
                     int r = rand()%(maximum+1-minimum);
                     sleep(minimum+r);
                 }
