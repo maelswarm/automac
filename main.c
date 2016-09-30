@@ -39,35 +39,38 @@ void safe_printf(const char *format, ...)
 
 int isValidNDevice(char *name) {
     
-    char buf[1024];
+    char data[4096];
+    memset(data, 0, 4096);
     struct ifconf ifc;
     struct ifreq *ifr;
-    int sck;
-    int nIntfcs;
+    int sk, length;
     
-    /* Get a socket handle. */
-    sck = socket(AF_INET, SOCK_DGRAM, 0);
-    if(sck < 0)
+    sk = socket(AF_INET, SOCK_DGRAM, 0);
+    if(sk < 0)
     {
         perror("socket");
-        return 1;
+        return 0;
     }
     
-    ifc.ifc_len = sizeof(buf);
-    ifc.ifc_buf = buf;
-    if(ioctl(sck, SIOCGIFCONF, &ifc) < 0)
+    ifc.ifc_len = sizeof(data);
+    ifc.ifc_buf = (caddr_t)data;
+    if(ioctl(sk, SIOCGIFCONF, &ifc) < 0)
     {
         perror("ioctl(SIOCGIFCONF)");
-        return 1;
+        return 0;
     }
     
-    ifr = ifc.ifc_req;
-    nIntfcs = ifc.ifc_len / sizeof(struct ifreq);
-    for(int i=0; i < nIntfcs; i++)
+    ifr = (struct ifreq*)data;
+    for(int i=0;i<ifc.ifc_len;)
     {
-        if (!strcmp((&ifr[i])->ifr_name, name)) {
+        length=IFNAMSIZ + ifr->ifr_addr.sa_len;
+        printf("%s\n", ifr->ifr_name);
+        if (!strcmp(ifr->ifr_name,name)) {
+            printf("Interface Found!\n");
             return 1;
         }
+        ifr=(struct ifreq*)((char*)ifr+length);
+        i+=length;
     }
     
     return 0;
@@ -91,20 +94,25 @@ int main(int argc, char **argv) {
         printf("\n./autoMACtic <device> <minumum timeout in minutes> <maximum timeout in minutes>\n\n");
         exit(0);
     }
+    
     if (!isValidNDevice(argv[1])) {
         printf("\nPlease choose a valid network device.\nFor example: en0 or p2p0\n");
         exit(0);
     }
+    
     if (argv[2] != NULL) {
         minimum = atoi(argv[2])*60;
     }
+    
     if (argv[3] != NULL) {
         maximum = atoi(argv[3])*60;
     }
+    
     if (maximum<minimum) {
         printf("\nmaximum must be eault to or greater than minimum\n");
         exit(0);
     }
+    
     if (maximum<60 || minimum<60) {
         printf("\ntimeout must be equal or greater than 1 minute\n");
         exit(0);
@@ -114,30 +122,30 @@ int main(int argc, char **argv) {
     printf("\nMin Refresh: %.01fmin", (float)minimum/60.0f);
     printf("\nMax Refresh: %.01fmin\n", (float)maximum/60.0f);
     
+    sleep(3);
     while (1) {
         char hwaddr[1000];
         memset(hwaddr, 0, strlen(hwaddr));
         sprintf(hwaddr, "%x%x:%x%x:%x%x:%x%x:%x%x:%x%x", rand()%16, rand()%16, rand()%16, rand()%16, rand()%16, rand()%16, rand()%16, rand()%16, rand()%16, rand()%16, rand()%16, rand()%16);
         pid = fork();
         if (pid == 0) {
-            
             char *execArgs[] = {"sudo", "ifconfig", argv[1], "ether", hwaddr, NULL};
             printf("\nSetting new MAC address: %s on device: %s\n", hwaddr, argv[1]);
-            int ifconfig_refresh = execvp(execArgs[0], execArgs);
+            execvp(execArgs[0], execArgs);
         } else {
             waitpid(-1, &status, 0);
             sleep(10);
             pid = fork();
             if (pid == 0) {
                 char *execArgs[] = {"sudo", "ifconfig", argv[1], "down", NULL};
-                int ifconfig_down = execvp(execArgs[0], execArgs);
+                execvp(execArgs[0], execArgs);
             } else {
                 waitpid(-1, &status, 0);
                 sleep(10);
                 pid = fork();
                 if (pid == 0) {
                     char *execArgs[] = {"sudo", "ifconfig", argv[1], "up", NULL};
-                    int ifconfig_up = execvp(execArgs[0], execArgs);
+                    execvp(execArgs[0], execArgs);
                 } else {
                     waitpid(-1, &status, 0);
                     printf("Completed\n");
