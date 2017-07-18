@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
     }
     
     if (maximum<minimum) {
-        printf("\nmaximum must be eault to or greater than minimum\n");
+        printf("\nmaximum must be equal to or greater than minimum\n");
         exit(0);
     }
     
